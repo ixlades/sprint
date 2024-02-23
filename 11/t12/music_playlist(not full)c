@@ -1,0 +1,394 @@
+#include "list.h"
+
+
+int main(int argc, char *argv[]) {
+    if (argc < 2 || argc > 5) {
+        mx_printerr("usage: ./playlist [file] [command] [args]\n");
+        exit(-1);
+    }
+    char *file = argv[1];
+    char *comand = argv[2];
+    t_list *node;
+    int fd = open(file, O_RDONLY);
+
+    if (fd < 0 && mx_strcmp(comand, ADD)) {
+        close(fd);
+        mx_printerr("ERROR\n");
+        exit(-1);
+    }
+    if (fd > 0) {
+        char *strcpy_of_file = mx_file_to_str(file);
+
+        for (int i = 0; strcpy_of_file[i] != '\0';) {
+            char buffer[64];
+            int j = 0;
+
+            for (;strcpy_of_file[i] != '\n' && strcpy_of_file[i] != '\0'; ++j, ++i) {
+                buffer[j] = strcpy_of_file[i];
+            }
+            buffer[j] = '\0';
+            char *str = (char *)malloc((j + 1) * sizeof(char));
+
+            mx_strcpy(str, buffer);
+            mx_push_back(&node, str);
+            free(str);
+        }
+        close(fd);
+        free(strcpy_of_file);
+    }
+
+    if (!mx_strcmp(comand, ADD)) {
+        if (fd < 0) {
+            fd = open(file, O_CREAT);
+        }
+        if (argc != 5) {
+            mx_printerr("usage: ./playlist [file] [command] [args]\n");
+            exit(-1);
+        }
+        char *str = mx_strjoin(argv[3], ",");
+        str = mx_strjoin(str, argv[4]);
+        str = mx_strjoin(str, "\n");
+    } else if (!mx_strcmp(comand, REMOVE)) {
+        if (argc != 4) {
+            mx_printerr("usage: ./playlist [file] [command] [args]\n");
+            exit(-1);
+        }
+        for (int i = 0; i < mx_strlen(argv[3]); ++i) {
+            if (!mx_isdigit(*(argv[3] + i))) {
+                close(fd);
+                mx_printerr("ERROR\n");
+                exit(-1);
+            }
+        }
+        mx_pop_index(&node,mx_atoi(argv[3]));
+    } else if (!mx_strcmp(comand, SORT)) {
+
+    } else if (!mx_strcmp(comand, PRINT)) {
+
+    } else {
+        mx_printerr("ERROR");
+    }
+    close(fd);
+}
+
+char *mx_strjoin(char const *s1, char const *s2) {
+    if (s1 == NULL && s2 == NULL) {
+        return NULL;
+    }
+    char *str1 = mx_strdup(s1);
+    char *str2 = mx_strdup(s2);
+    if (str1 == NULL) {
+        free(str1);
+        return str2;
+    }
+    if (str2 == NULL) {
+        free(str2);
+        return str1;
+    }
+    char *str = mx_strdup(mx_strcat(str1, str2));
+    free(str1);
+    free(str2);
+    return str;
+}
+
+char *mx_strdup(const char *str) {
+    if (str == NULL) {
+        return NULL;
+    }
+    char *copy_str = mx_strnew(mx_strlen(str) + 1);
+
+    if (copy_str != NULL) {
+        mx_strcpy(copy_str, str);
+    }
+    return copy_str;
+}
+char *mx_strnew(const int size) {
+    if (size < 0) {
+        return NULL;
+    }
+    char *str = (char *)malloc(sizeof(char) * (size + 1));
+
+    if (str != NULL) {
+        for (int i = 0; i < size + 1; i++) {
+            str[i] = '\0';
+        }
+    }
+    return str;
+}
+char *mx_strcpy(char *dst, const char *src) {
+    int i = 0;
+
+    while (*src != '\0') {
+        dst[i] = *src;
+        ++src;
+        ++i;
+    }
+
+    dst[i] = '\0';
+    return dst;
+}
+char *mx_strcat(char *s1, const char *s2) {
+    int length = mx_strlen(s1);
+    char *ps1 = s1;
+    int i = 0;
+
+    for (; *(s2 + i) != '\0'; ++i) {
+        *(s1 + length + i) = *(s2 + i);
+    }
+    *(s1 + length + i) = '\0';
+    return ps1;
+}
+
+int mx_strcmp(const char *s1, const char *s2) {
+    while (*s1 != '0' && *s2 != '0') {
+        if (*s1 != *s2) {
+            return (*s1 - *s2);
+        }
+        ++s1;
+        ++s2;
+    }
+    return 0;
+}
+
+char *mx_file_to_str(const char *filename) {
+    if (filename) {
+        int src = open(filename, O_RDONLY);
+
+        if (src > 0) {
+            char buff[64], *text = NULL;
+            int rd = read(src, &buff, sizeof(buff));
+            int count = rd;
+
+            if (rd) {
+                while (rd == 64) {
+                    rd = read(src, &buff, sizeof(buff));
+                    count += rd;
+                }
+                close(src);
+                text = (char *)malloc(sizeof(char) * count + 1);
+                src = open(filename, O_RDONLY);
+                rd = read(src, text, count);
+                text[count] = '\0';
+                close(src);
+                return text;
+            }
+        }
+        close(src);
+    }
+    return NULL;
+}
+
+int mx_atoi(const char *str) {
+    int result = 0;
+    int sign = 1;
+
+    //Skip leading whitespaces
+    while (mx_isspace(*str)) {
+        str++;
+    }
+    if (*str == '-' || *str == '+') {
+        sign = (*str == '-') ? -1 : 1;
+        str++;
+    }
+    //Convert characters to integer
+    while (mx_isdigit(*str)) {
+        result = result * 10 + (*str - '0');
+        str++;
+    }
+    return result * sign;
+}
+bool mx_isspace(char c) {
+    if ((c >= '\t' && c <= '\r') || c == ' ') {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+bool mx_isdigit(int c) {
+    if (c >= 48 && c <= 57) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+int mx_strlen(const char *s) {
+    int length = 0;
+
+    while(s[length] != '\0') {
+        ++length;
+    }
+    return length;
+}
+
+void mx_printerr(const char *s) {
+    write(STDERR_FILENO, s, mx_strlen(s));
+}
+
+t_list *mx_sort_list(t_list *list, bool(*cmp)(void *a, void *b)) {
+    if (list == NULL || list->next == NULL) {
+        return list; // Already sorted or empty list
+    }
+    bool swapped = true;
+    t_list *temp;
+
+    while (swapped) {
+        swapped = false;
+        t_list *current = list;
+        t_list *prev = NULL;
+
+        while (current->next != NULL) {
+            if (cmp(current->data, current->next->data)) {
+                temp = current->next;
+                current->next = temp->next;
+                temp->next = current;
+
+                if (prev != NULL) {
+                    prev->next = temp;
+                } else {
+                    list = temp;
+                }
+                swapped = true;
+            }
+            prev = current;
+            current = current->next;
+        }
+    }
+    return list;
+}
+
+
+void mx_foreach_list(t_list *list, void(*f)(t_list *node)) {
+    t_list *temp = list;
+
+    while (temp != NULL) {
+        f(temp);
+        temp = temp->next;
+    }
+}
+
+
+void mx_pop_index(t_list **list, int index) {
+    int list_size = mx_list_size(*list);
+    t_list* temp = *list;
+    int current_size = 0;
+
+    if (index > list_size) {
+        mx_pop_back(list);
+        return;
+    }
+    if (index <= 0) {
+        mx_pop_front(list);
+        return;
+    }
+
+    while (current_size < index - 1) {
+        temp = temp->next;
+        ++current_size;
+    }
+
+    t_list *node_to_remove = temp->next;
+
+    temp->next = node_to_remove->next;
+    free(node_to_remove);
+}
+
+
+void mx_push_index(t_list** list, void* data, int index) {
+    int list_size = mx_list_size(*list);
+    t_list* temp = *list;
+    int current_size = 0;
+
+    if (index > list_size) {
+        mx_push_back(list, data);
+        return;
+    }
+    if (index <= 0) {
+        mx_push_front(list, data);
+        return;
+    }
+
+    while (current_size < index - 1) {
+        temp = temp->next;
+        ++current_size;
+    }
+
+    t_list* new_node = mx_create_node(data);
+
+    new_node->next = temp->next;
+    temp->next = new_node;
+}
+
+void mx_push_front(t_list **list, void *data) {
+    t_list *newNode = mx_create_node(data);
+
+    newNode->next = *list;
+    *list = newNode;
+
+}
+
+t_list *mx_create_node(void *data) {
+    t_list *new_node = (t_list *)malloc(sizeof(t_list));
+    if (new_node == NULL) {
+        exit(EXIT_FAILURE);
+    }
+    new_node->data = data;
+    new_node->next = NULL;
+    return new_node;
+}
+
+
+void mx_push_back(t_list **list, void *data) {
+    t_list *newNode = mx_create_node(data);
+
+    if (*list == NULL) {
+        *list = newNode;
+    } else {
+        t_list *current = *list;
+        while (current->next != NULL) {
+            current = current->next;
+        }
+        current->next = newNode;
+    }
+}
+
+void mx_pop_back(t_list **list) {
+    if (*list == NULL) {
+        return;
+    }
+    if ((*list)->next == NULL) {
+        free(*list);
+        *list = NULL;
+        return;
+    }
+    t_list* current = *list;
+
+    while (current->next->next != NULL) {
+        current = current->next;
+    }
+
+    free(current->next);
+    current->next = NULL;
+}
+void mx_pop_front(t_list **list) {
+    if (*list == NULL) {
+        return;
+    }
+    t_list *temp = *list;
+
+    *list = (*list)->next;
+    free(temp);
+}
+int mx_list_size(t_list *list) {
+    int count = 0;
+    t_list *temp = list;
+
+    while(temp->next != NULL) {
+        temp = temp->next;
+        ++count;
+    }
+
+    return count;
+}
+
